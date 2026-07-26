@@ -1,5 +1,6 @@
 import java.util.Scanner;
 import test.TestClass;
+import exercices.QuestionsClass;
 
 public class App {
     public static void main(String[] args) throws Exception {
@@ -15,5 +16,10 @@ public class App {
 
         TestClass t = new TestClass();
         TestClass.runTest(67); /* since 'run test' is a static method, we do not need a instance of TestClass to call it */
+
+        QuestionsClass.questionOne("Luan", 1997);
+        QuestionsClass.questionTwo(14);
+        QuestionsClass.questionThree(5, 12);
+        QuestionsClass.questionFour(19, 24);
     }
 }
