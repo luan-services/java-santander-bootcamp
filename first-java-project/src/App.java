@@ -14,6 +14,6 @@ public class App {
         scanner.close();
 
         TestClass t = new TestClass();
-        t.runTest(67);
+        TestClass.runTest(67); /* since 'run test' is a static method, we do not need a instance of TestClass to call it */
     }
 }
