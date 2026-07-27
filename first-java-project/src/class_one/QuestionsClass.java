@@ -1,4 +1,4 @@
-package exercices;
+package class_one;
 
 public class QuestionsClass {
 
