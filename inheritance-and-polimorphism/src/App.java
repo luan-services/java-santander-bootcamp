@@ -31,8 +31,12 @@ public class App {
 
         if (staff[0] instanceof Manager) {
             Manager m = (Manager) staff[0]; /* recast maanger as a manager to access its values */
+            System.out.println(m instanceof Employee); /* true  */
+            System.out.println(employee instanceof Manager); /* false  */
+            /* System.out.println(m instanceof Salesman); can't do it because they are not related */
         }
 
         System.out.println("Hello, World!");
+
     }
 }

@@ -49,4 +49,7 @@ public /* abstract */ /* final */ class Employee {
     public void setSalary(double salary) {
         this.salary = salary;
     }
+
+    /* public abstract getFullSalary(); if you have a abstract class you can create abstract method, this will obrigate any
+    class that extends Employee to create a getFullSalary method */
 }
