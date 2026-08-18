@@ -8,11 +8,13 @@ import org.flywaydb.core.api.output.MigrateResult;
 import com.luan.config.DatabaseHealthCheck;
 import com.luan.config.DatabaseMigration;
 import com.luan.dao.UserDao;
+import com.luan.dao.UserAuditDao;
 import com.luan.dao.UserSummaryDao;
 import com.luan.exception.DatabaseException;
 import com.luan.exception.DuplicateEmailException;
 import com.luan.exception.UserNotFoundException;
 import com.luan.model.User;
+import com.luan.model.UserAudit;
 import com.luan.model.UserSummary;
 
 public class App {
@@ -111,5 +113,12 @@ public class App {
             /* cleanup runs even if the procedure example fails */
             userDao.delete(procedureUser.getId());
         }
+
+        /* audit rows were created by the trigger without direct inserts from Java */
+        UserAuditDao userAuditDao = new UserAuditDao();
+        List<UserAudit> auditEntries = userAuditDao.findAll();
+        UserAudit latestEntry = auditEntries.get(auditEntries.size() - 1);
+        System.out.println("Audit entries: " + auditEntries.size()
+                + ", latest entry: " + latestEntry);
     }
 }
