@@ -97,5 +97,19 @@ public class App {
         UserSummaryDao userSummaryDao = new UserSummaryDao();
         List<UserSummary> summaries = userSummaryDao.findAll();
         System.out.println("User summary view: " + summaries);
+
+        /* CallableStatement delegates this email update to a PostgreSQL procedure */
+        String procedureEmail = "procedure." + System.currentTimeMillis() + "@email.com";
+        User procedureUser = userDao.create(new User("Procedure User", procedureEmail));
+        String updatedProcedureEmail = "updated." + procedureEmail;
+
+        try {
+            userDao.updateEmailWithProcedure(procedureUser.getId(), updatedProcedureEmail);
+            User updatedProcedureUser = userDao.findById(procedureUser.getId());
+            System.out.println("Procedure result: " + updatedProcedureUser);
+        } finally {
+            /* cleanup runs even if the procedure example fails */
+            userDao.delete(procedureUser.getId());
+        }
     }
 }

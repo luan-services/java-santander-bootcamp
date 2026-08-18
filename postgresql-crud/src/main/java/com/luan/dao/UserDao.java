@@ -1,6 +1,7 @@
 package com.luan.dao;
 
 import java.sql.Connection;
+import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -15,6 +16,7 @@ import com.luan.model.User;
 
 public class UserDao {
     private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
+    private static final String NO_DATA_FOUND_SQL_STATE = "P0002";
 
     private static final String INSERT_USER = """
             INSERT INTO users (name, email)
@@ -44,6 +46,9 @@ public class UserDao {
             DELETE FROM users
             WHERE id = ?
             """;
+
+    private static final String CALL_UPDATE_EMAIL_PROCEDURE =
+            "CALL update_user_email(?, ?)";
 
     public User create(User user) {
         try (Connection connection = ConnectionFactory.openConnection()) {
@@ -168,6 +173,28 @@ public class UserDao {
             }
         } catch (SQLException exception) {
             throw new DatabaseException("Could not delete the user with id " + id, exception);
+        }
+    }
+
+    public void updateEmailWithProcedure(long id, String newEmail) {
+        /* CallableStatement is designed to invoke stored procedures */
+        try (Connection connection = ConnectionFactory.openConnection();
+                CallableStatement statement = connection.prepareCall(CALL_UPDATE_EMAIL_PROCEDURE)) {
+
+            statement.setLong(1, id);
+            statement.setString(2, newEmail);
+            statement.execute();
+        } catch (SQLException exception) {
+            if (isUniqueViolation(exception)) {
+                throw new DuplicateEmailException(newEmail, exception);
+            }
+
+            if (NO_DATA_FOUND_SQL_STATE.equals(exception.getSQLState())) {
+                throw new UserNotFoundException(id);
+            }
+
+            throw new DatabaseException(
+                    "Could not update the user email with the stored procedure", exception);
         }
     }
 
