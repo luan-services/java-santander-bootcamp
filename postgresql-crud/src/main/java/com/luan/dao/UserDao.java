@@ -7,6 +7,7 @@ import java.sql.SQLException;
 
 import com.luan.config.ConnectionFactory;
 import com.luan.exception.DatabaseException;
+import com.luan.exception.UserNotFoundException;
 import com.luan.model.User;
 
 public class UserDao {
@@ -14,6 +15,12 @@ public class UserDao {
             INSERT INTO users (name, email)
             VALUES (?, ?)
             RETURNING id
+            """;
+
+    private static final String FIND_USER_BY_ID = """
+            SELECT id, name, email
+            FROM users
+            WHERE id = ?
             """;
 
     public User create(User user) {
@@ -37,6 +44,30 @@ public class UserDao {
             }
         } catch (SQLException exception) {
             throw new DatabaseException("Could not create the user", exception);
+        }
+    }
+
+    public User findById(long id) {
+        try (Connection connection = ConnectionFactory.openConnection();
+                PreparedStatement statement = connection.prepareStatement(FIND_USER_BY_ID)) {
+
+            /* the id replaces the first question mark without changing the SQL text */
+            statement.setLong(1, id);
+
+            /* executeQuery is used when the SQL command returns rows */
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new UserNotFoundException(id);
+                }
+
+                /* values from the current ResultSet row are mapped into a User object */
+                return new User(
+                        resultSet.getLong("id"),
+                        resultSet.getString("name"),
+                        resultSet.getString("email"));
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseException("Could not find the user with id " + id, exception);
         }
     }
 }

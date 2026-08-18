@@ -8,6 +8,7 @@ import com.luan.config.DatabaseHealthCheck;
 import com.luan.config.DatabaseMigration;
 import com.luan.dao.UserDao;
 import com.luan.exception.DatabaseException;
+import com.luan.exception.UserNotFoundException;
 import com.luan.model.User;
 
 public class App {
@@ -25,15 +26,18 @@ public class App {
             System.out.println("JDBC connection failed: " + exception.getMessage());
         }
 
-        /* the id is null until PostgreSQL inserts the row and generates it */
-        User user = new User("Alice", "alice@email.com");
         UserDao userDao = new UserDao();
 
         try {
-            User createdUser = userDao.create(user);
-            System.out.println("Created user: " + createdUser);
+            User foundUser = userDao.findById(1);
+            System.out.println("Found user: " + foundUser);
+
+            /* this query demonstrates the exception used when no row is returned */
+            userDao.findById(99);
+        } catch (UserNotFoundException exception) {
+            System.out.println("User search failed: " + exception.getMessage());
         } catch (DatabaseException exception) {
-            System.out.println("Could not create user: " + exception.getMessage());
+            System.out.println("Database operation failed: " + exception.getMessage());
         }
     }
 }
