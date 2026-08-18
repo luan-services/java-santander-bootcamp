@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.luan.config.ConnectionFactory;
 import com.luan.exception.DatabaseException;
@@ -20,6 +22,23 @@ public class UserDao {
     private static final String FIND_USER_BY_ID = """
             SELECT id, name, email
             FROM users
+            WHERE id = ?
+            """;
+
+    private static final String FIND_ALL_USERS = """
+            SELECT id, name, email
+            FROM users
+            ORDER BY id
+            """;
+
+    private static final String UPDATE_USER = """
+            UPDATE users
+            SET name = ?, email = ?
+            WHERE id = ?
+            """;
+
+    private static final String DELETE_USER = """
+            DELETE FROM users
             WHERE id = ?
             """;
 
@@ -60,14 +79,79 @@ public class UserDao {
                     throw new UserNotFoundException(id);
                 }
 
-                /* values from the current ResultSet row are mapped into a User object */
-                return new User(
-                        resultSet.getLong("id"),
-                        resultSet.getString("name"),
-                        resultSet.getString("email"));
+                return mapUser(resultSet);
             }
         } catch (SQLException exception) {
             throw new DatabaseException("Could not find the user with id " + id, exception);
         }
+    }
+
+    public List<User> findAll() {
+        List<User> users = new ArrayList<>();
+
+        try (Connection connection = ConnectionFactory.openConnection();
+                PreparedStatement statement = connection.prepareStatement(FIND_ALL_USERS);
+                ResultSet resultSet = statement.executeQuery()) {
+
+            /* each call to next moves the cursor to another returned row */
+            while (resultSet.next()) {
+                users.add(mapUser(resultSet));
+            }
+
+            /* collection queries return an empty list when no rows exist */
+            return users;
+        } catch (SQLException exception) {
+            throw new DatabaseException("Could not list the users", exception);
+        }
+    }
+
+    public User update(User user) {
+        if (user.getId() == null) {
+            throw new IllegalArgumentException("A user id is required for update");
+        }
+
+        try (Connection connection = ConnectionFactory.openConnection();
+                PreparedStatement statement = connection.prepareStatement(UPDATE_USER)) {
+
+            statement.setString(1, user.getName());
+            statement.setString(2, user.getEmail());
+            statement.setLong(3, user.getId());
+
+            /* executeUpdate returns the number of rows changed by the command */
+            int affectedRows = statement.executeUpdate();
+
+            if (affectedRows == 0) {
+                throw new UserNotFoundException(user.getId());
+            }
+
+            return user;
+        } catch (SQLException exception) {
+            throw new DatabaseException("Could not update the user with id " + user.getId(), exception);
+        }
+    }
+
+    public void delete(long id) {
+        try (Connection connection = ConnectionFactory.openConnection();
+                PreparedStatement statement = connection.prepareStatement(DELETE_USER)) {
+
+            statement.setLong(1, id);
+
+            /* zero affected rows means that the requested id did not exist */
+            int affectedRows = statement.executeUpdate();
+
+            if (affectedRows == 0) {
+                throw new UserNotFoundException(id);
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseException("Could not delete the user with id " + id, exception);
+        }
+    }
+
+    /* centralizes the conversion used by queries that return User rows */
+    private User mapUser(ResultSet resultSet) throws SQLException {
+        return new User(
+                resultSet.getLong("id"),
+                resultSet.getString("name"),
+                resultSet.getString("email"));
     }
 }

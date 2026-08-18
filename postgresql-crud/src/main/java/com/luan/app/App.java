@@ -1,6 +1,7 @@
 package com.luan.app;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.flywaydb.core.api.output.MigrateResult;
 
@@ -29,13 +30,29 @@ public class App {
         UserDao userDao = new UserDao();
 
         try {
-            User foundUser = userDao.findById(1);
+            /* a unique email makes this example safe to execute more than once */
+            String temporaryEmail = "temporary." + System.currentTimeMillis() + "@email.com";
+            User createdUser = userDao.create(new User("Temporary User", temporaryEmail));
+            System.out.println("Created user: " + createdUser);
+
+            User foundUser = userDao.findById(createdUser.getId());
             System.out.println("Found user: " + foundUser);
 
-            /* this query demonstrates the exception used when no row is returned */
-            userDao.findById(99);
+            List<User> users = userDao.findAll();
+            System.out.println("All users: " + users);
+
+            createdUser.setName("Updated User");
+            createdUser.setEmail("updated." + System.currentTimeMillis() + "@email.com");
+            User updatedUser = userDao.update(createdUser);
+            System.out.println("Updated user: " + updatedUser);
+
+            userDao.delete(createdUser.getId());
+            System.out.println("Deleted user with id: " + createdUser.getId());
+
+            /* searching after deletion demonstrates the not-found result */
+            userDao.findById(createdUser.getId());
         } catch (UserNotFoundException exception) {
-            System.out.println("User search failed: " + exception.getMessage());
+            System.out.println("User operation failed: " + exception.getMessage());
         } catch (DatabaseException exception) {
             System.out.println("Database operation failed: " + exception.getMessage());
         }
