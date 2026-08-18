@@ -8,10 +8,12 @@ import org.flywaydb.core.api.output.MigrateResult;
 import com.luan.config.DatabaseHealthCheck;
 import com.luan.config.DatabaseMigration;
 import com.luan.dao.UserDao;
+import com.luan.dao.UserSummaryDao;
 import com.luan.exception.DatabaseException;
 import com.luan.exception.DuplicateEmailException;
 import com.luan.exception.UserNotFoundException;
 import com.luan.model.User;
+import com.luan.model.UserSummary;
 
 public class App {
     public static void main(String[] args) {
@@ -90,5 +92,10 @@ public class App {
                     .noneMatch(user -> user.getEmail().equals(rollbackEmail));
             System.out.println("Rolled back transaction: " + firstInsertWasRolledBack);
         }
+
+        /* a view can be queried without reproducing its formatting expression in Java */
+        UserSummaryDao userSummaryDao = new UserSummaryDao();
+        List<UserSummary> summaries = userSummaryDao.findAll();
+        System.out.println("User summary view: " + summaries);
     }
 }
