@@ -6,6 +6,9 @@ import org.flywaydb.core.api.output.MigrateResult;
 
 import com.luan.config.DatabaseHealthCheck;
 import com.luan.config.DatabaseMigration;
+import com.luan.dao.UserDao;
+import com.luan.exception.DatabaseException;
+import com.luan.model.User;
 
 public class App {
     public static void main(String[] args) {
@@ -20,6 +23,17 @@ public class App {
             System.out.println("JDBC connection available: " + databaseAvailable);
         } catch (SQLException exception) {
             System.out.println("JDBC connection failed: " + exception.getMessage());
+        }
+
+        /* the id is null until PostgreSQL inserts the row and generates it */
+        User user = new User("Alice", "alice@email.com");
+        UserDao userDao = new UserDao();
+
+        try {
+            User createdUser = userDao.create(user);
+            System.out.println("Created user: " + createdUser);
+        } catch (DatabaseException exception) {
+            System.out.println("Could not create user: " + exception.getMessage());
         }
     }
 }
