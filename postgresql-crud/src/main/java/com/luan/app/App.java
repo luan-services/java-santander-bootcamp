@@ -63,5 +63,32 @@ public class App {
         } catch (DatabaseException exception) {
             System.out.println("Database operation failed: " + exception.getMessage());
         }
+
+        /* both users are committed because every insert succeeds */
+        List<User> committedUsers = List.of(
+                new User("Committed User One", "committed.one@email.com"),
+                new User("Committed User Two", "committed.two@email.com"));
+
+        try {
+            userDao.createAll(committedUsers);
+            System.out.println("Committed transaction: " + committedUsers);
+            committedUsers.forEach(user -> userDao.delete(user.getId()));
+        } catch (DuplicateEmailException | DatabaseException exception) {
+            System.out.println("Commit example failed: " + exception.getMessage());
+        }
+
+        /* the duplicate email makes the second insert fail and rolls back the first */
+        String rollbackEmail = "rollback." + System.currentTimeMillis() + "@email.com";
+        List<User> rolledBackUsers = List.of(
+                new User("Rolled Back User", rollbackEmail),
+                new User("Duplicate Alice", "alice@email.com"));
+
+        try {
+            userDao.createAll(rolledBackUsers);
+        } catch (DuplicateEmailException exception) {
+            boolean firstInsertWasRolledBack = userDao.findAll().stream()
+                    .noneMatch(user -> user.getEmail().equals(rollbackEmail));
+            System.out.println("Rolled back transaction: " + firstInsertWasRolledBack);
+        }
     }
 }

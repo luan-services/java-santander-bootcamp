@@ -46,30 +46,43 @@ public class UserDao {
             """;
 
     public User create(User user) {
-        /* question marks keep values separate from the SQL command */
-        try (Connection connection = ConnectionFactory.openConnection();
-                PreparedStatement statement = connection.prepareStatement(INSERT_USER)) {
-
-            /* parameter indexes start at one and follow the SQL question marks */
-            statement.setString(1, user.getName());
-            statement.setString(2, user.getEmail());
-
-            /* PostgreSQL RETURNING produces a ResultSet containing the generated id */
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (!resultSet.next()) {
-                    throw new DatabaseException("The database did not return the generated user id");
-                }
-
-                /* the generated database id is assigned to the same User object */
-                user.setId(resultSet.getLong("id"));
-                return user;
-            }
+        try (Connection connection = ConnectionFactory.openConnection()) {
+            return insertUser(connection, user);
         } catch (SQLException exception) {
             if (isUniqueViolation(exception)) {
                 throw new DuplicateEmailException(user.getEmail(), exception);
             }
 
             throw new DatabaseException("Could not create the user", exception);
+        }
+    }
+
+    public List<User> createAll(List<User> users) {
+        try (Connection connection = ConnectionFactory.openConnection()) {
+            /* disabling auto-commit starts a transaction controlled by this method */
+            connection.setAutoCommit(false);
+
+            try {
+                for (User user : users) {
+                    insertUser(connection, user);
+                }
+
+                /* commit makes every successful insert in the transaction permanent */
+                connection.commit();
+                return users;
+            } catch (SQLException exception) {
+                /* rollback cancels every insert made since the transaction started */
+                rollback(connection, exception);
+                users.forEach(user -> user.setId(null));
+
+                if (isUniqueViolation(exception)) {
+                    throw new DuplicateEmailException("one of the provided emails", exception);
+                }
+
+                throw new DatabaseException("Could not create the users in one transaction", exception);
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseException("Could not start the user transaction", exception);
         }
     }
 
@@ -164,6 +177,35 @@ public class UserDao {
                 resultSet.getLong("id"),
                 resultSet.getString("name"),
                 resultSet.getString("email"));
+    }
+
+    /* inserts using a connection supplied by either a regular or transactional operation */
+    private User insertUser(Connection connection, User user) throws SQLException {
+        /* question marks keep values separate from the SQL command */
+        try (PreparedStatement statement = connection.prepareStatement(INSERT_USER)) {
+            /* parameter indexes start at one and follow the SQL question marks */
+            statement.setString(1, user.getName());
+            statement.setString(2, user.getEmail());
+
+            /* PostgreSQL RETURNING produces a ResultSet containing the generated id */
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new SQLException("The database did not return the generated user id");
+                }
+
+                user.setId(resultSet.getLong("id"));
+                return user;
+            }
+        }
+    }
+
+    /* preserves a rollback failure as additional information on the original error */
+    private void rollback(Connection connection, SQLException originalException) {
+        try {
+            connection.rollback();
+        } catch (SQLException rollbackException) {
+            originalException.addSuppressed(rollbackException);
+        }
     }
 
     /* SQLState 23505 is PostgreSQL's standard code for a unique constraint violation */
