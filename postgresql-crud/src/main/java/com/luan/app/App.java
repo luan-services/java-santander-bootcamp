@@ -9,6 +9,7 @@ import com.luan.config.DatabaseHealthCheck;
 import com.luan.config.DatabaseMigration;
 import com.luan.dao.UserDao;
 import com.luan.exception.DatabaseException;
+import com.luan.exception.DuplicateEmailException;
 import com.luan.exception.UserNotFoundException;
 import com.luan.model.User;
 
@@ -29,6 +30,13 @@ public class App {
 
         UserDao userDao = new UserDao();
 
+        /* Alice already owns this email, so PostgreSQL rejects the duplicate */
+        try {
+            userDao.create(new User("Another Alice", "alice@email.com"));
+        } catch (DuplicateEmailException exception) {
+            System.out.println("Duplicate email: " + exception.getMessage());
+        }
+
         try {
             /* a unique email makes this example safe to execute more than once */
             String temporaryEmail = "temporary." + System.currentTimeMillis() + "@email.com";
@@ -48,11 +56,10 @@ public class App {
 
             userDao.delete(createdUser.getId());
             System.out.println("Deleted user with id: " + createdUser.getId());
-
-            /* searching after deletion demonstrates the not-found result */
-            userDao.findById(createdUser.getId());
         } catch (UserNotFoundException exception) {
             System.out.println("User operation failed: " + exception.getMessage());
+        } catch (DuplicateEmailException exception) {
+            System.out.println("Duplicate email: " + exception.getMessage());
         } catch (DatabaseException exception) {
             System.out.println("Database operation failed: " + exception.getMessage());
         }

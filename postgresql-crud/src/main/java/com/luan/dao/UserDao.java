@@ -9,10 +9,13 @@ import java.util.List;
 
 import com.luan.config.ConnectionFactory;
 import com.luan.exception.DatabaseException;
+import com.luan.exception.DuplicateEmailException;
 import com.luan.exception.UserNotFoundException;
 import com.luan.model.User;
 
 public class UserDao {
+    private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
+
     private static final String INSERT_USER = """
             INSERT INTO users (name, email)
             VALUES (?, ?)
@@ -62,6 +65,10 @@ public class UserDao {
                 return user;
             }
         } catch (SQLException exception) {
+            if (isUniqueViolation(exception)) {
+                throw new DuplicateEmailException(user.getEmail(), exception);
+            }
+
             throw new DatabaseException("Could not create the user", exception);
         }
     }
@@ -126,6 +133,10 @@ public class UserDao {
 
             return user;
         } catch (SQLException exception) {
+            if (isUniqueViolation(exception)) {
+                throw new DuplicateEmailException(user.getEmail(), exception);
+            }
+
             throw new DatabaseException("Could not update the user with id " + user.getId(), exception);
         }
     }
@@ -153,5 +164,10 @@ public class UserDao {
                 resultSet.getLong("id"),
                 resultSet.getString("name"),
                 resultSet.getString("email"));
+    }
+
+    /* SQLState 23505 is PostgreSQL's standard code for a unique constraint violation */
+    private boolean isUniqueViolation(SQLException exception) {
+        return UNIQUE_VIOLATION_SQL_STATE.equals(exception.getSQLState());
     }
 }
